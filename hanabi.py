@@ -1,10 +1,6 @@
 import random
 from pprint import pprint
-from itertools import cycle
 from collections import namedtuple
-import argparse
-import random
-import importlib
 from enum import Enum
 
 
@@ -47,8 +43,6 @@ def Move(name, identifier, items):
         @classmethod
         def create(cls, *args, **kwargs):
             ret = cls(cls.identifier, *args, **kwargs)
-            ret.__name__ = name
-            ret.identifier = identifier
             return ret
     MyMove.identifier = identifier
     MyMove.__name__ = name
@@ -76,7 +70,9 @@ class Hanabi:
         self.rules = rules
         self.deck = deck
         self.allow_cheats = allow_cheats
-        self.end_mode = EndMode(end_mode)
+        if not isinstance(end_mode, EndMode):
+            end_mode = EndMode[end_mode]
+        self.end_mode = end_mode
 
         self.current_player = None
 
@@ -232,25 +228,3 @@ def run_game_once(player, num_players=3, end_mode=EndMode.official, suits=5, all
     h.run()
     h.print()
     return h
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('player_name')
-    parser.add_argument('-t', '--times', default=1, type=int)
-    parser.add_argument('-n', '--players', default=3, type=int)
-    parser.add_argument('-c', '--allow-cheats', default=False, action='store_true')
-    parser.add_argument('-e', '--end-mode', default='official', choices=[e.name for e in EndMode])
-    parser.add_argument('-s', '--suits', default=5, type=int)
-
-    args = parser.parse_args()
-    lib = importlib.import_module(f'players')
-    player = getattr(lib, args.player_name)
-    h_args = (args.players, EndMode[args.end_mode], args.suits, args.allow_cheats)
-    if args.times > 1:
-        return run_game_n_times(player, args.times, *h_args)
-    else:
-        return run_game_once(player, *h_args)
-
-if __name__ == '__main__':
-    main()

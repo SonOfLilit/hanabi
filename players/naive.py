@@ -4,14 +4,13 @@ def naive_player(state, log, hands, rules, tokens, slots, discard_pile):
     """
     Zvika and Ofer's naive player
     """
-    ignore_clues_after_play = True
     my_id = len(log) % len(hands)
     hinted_cards = set()
 
     my_card_ids = [card.id for card in hands[my_id]]
 
     for move in log[-len(hands):]:
-        if move.__name__ == 'ResolvedClue':  # FIX_ME
+        if isinstance(move, ResolvedClue):
             if move.player == my_id:
                 for card in move.cards:
                     hinted_cards.add(card.id)
