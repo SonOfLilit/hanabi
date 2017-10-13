@@ -6,9 +6,10 @@ Created on Fri Oct 13 19:57:00 2017
 """
 import argparse
 from hanabi import EndMode, run_game_n_times, run_game_once
+import players
 
 
-def main():
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('player_name')
     parser.add_argument('-t', '--times', default=1, type=int)
@@ -18,13 +19,9 @@ def main():
     parser.add_argument('-s', '--suits', default=5, type=int)
 
     args = parser.parse_args()
-    import players
     player = getattr(players, args.player_name)
     h_args = (args.players, EndMode[args.end_mode], args.suits, args.allow_cheats)
     if args.times > 1:
-        return run_game_n_times(player, args.times, *h_args)
-    else:
-        return run_game_once(player, *h_args)
-
-if __name__ == '__main__':
-    main()
+        scores = run_game_n_times(player, args.times, *h_args)
+    if args.times == 1:
+        h = run_game_once(player, *h_args)

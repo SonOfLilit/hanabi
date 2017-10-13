@@ -5,21 +5,21 @@ def naive_player(state, log, hands, rules, tokens, slots, discard_pile):
     Zvika and Ofer's naive player
     """
     my_id = len(log) % len(hands)
-    hinted_cards = set()
-
     my_card_ids = [card.id for card in hands[my_id]]
 
+    hinted_cards = set()
     for move in log[-len(hands):]:
         if isinstance(move, ResolvedClue):
             if move.player == my_id:
-                for card in move.cards:
-                    hinted_cards.add(card.id)
+                hinted_cards = hinted_cards.union(card.id for card in move.cards)
 
-    if hinted_cards:  # Its better to play than hint
+    # Its better to play than hint
+    if hinted_cards:
         play_card = max(hinted_cards)
         return state, Play.create(play_card)
 
-    if tokens.clues > 0:  # Its better to hint than discard
+    # Its better to hint than discard
+    if tokens.clues > 0:
         for i in range(len(hands) - 1):
             player = (my_id + i + 1) % len(hands)
             player_suits = set([card.data.suit for card in hands[player]])
@@ -28,13 +28,15 @@ def naive_player(state, log, hands, rules, tokens, slots, discard_pile):
                 if slots[card.data.suit] != card.data.rank:
                     player_suits -= set([card.data.suit])
                     player_ranks -= set([card.data.rank])
-
             if player_ranks:
-                return state, Clue.create(player, 'rank', max(player_ranks))  # its better to go up then sideways
+                # its better to go up then sideways
+                return state, Clue.create(player, 'rank', max(player_ranks))
             if player_suits:
                 return state, Clue.create(player, 'suit', player_suits.pop())
 
-    if tokens.clues < rules.max_tokens.clues:  # Its better to discard then playing like an idiot
+    # Its better to discard then playing like an idiot
+    if tokens.clues < rules.max_tokens.clues:
         return state, Discard.create(min(my_card_ids))
 
-    return state, Play.create(max(my_card_ids))  # If all else fails, play like an idiot
+    # If all else fails, play like an idiot
+    return state, Play.create(max(my_card_ids))

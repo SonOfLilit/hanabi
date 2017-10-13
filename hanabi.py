@@ -3,65 +3,64 @@ from pprint import pprint
 from collections import namedtuple
 from enum import Enum
 
+import colorama
+colorama.init()
+suits_col = [colorama.Fore.RED, colorama.Fore.GREEN, colorama.Fore.YELLOW, 
+             colorama.Fore.BLUE, colorama.Fore.MAGENTA, colorama.Fore.CYAN, ]
 
 class EndMode(Enum):
     official = 1
     endless = 2
     fair = 3
 
-
 class IllegalMove(Exception):
     pass
 
 class KnownCard(namedtuple('KnownCard', 'suit rank')):
     def __repr__(self):
-        return f':s{self.suit}r{self.rank}'
-
+        return f':{chr(ord("A")+self.suit)}{self.rank}'
 
 class Card(namedtuple('Card', 'id data')):
     def __repr__(self):
         return f'#{self.id}{self.data or ""}'
-
     def hidden(self):
         if self.data is not None:
             return self._replace(data=None)
         return self
 
-
 class Tokens(namedtuple('Tokens', 'clues lives')):
     pass
-
 
 class Rules(namedtuple('Rules', 'max_tokens suits ranks cards_per_player')):
     pass
 
+
 IDENTIFIER_TO_MOVE = {}
-
-
-def Move(name, identifier, items):
-    class MyMove(namedtuple(name, items)):  # FIX ME
+def move_tuple(name, identifier, items):
+    class Move(namedtuple(name, items)):
         @classmethod
         def create(cls, *args, **kwargs):
             ret = cls(cls.identifier, *args, **kwargs)
             return ret
-    MyMove.identifier = identifier
-    MyMove.__name__ = name
+    Move.identifier = identifier
+    Move.__name__ = name
     if 'Resolved' not in name:
-        IDENTIFIER_TO_MOVE[identifier] = MyMove
-    return MyMove
-ResolvedClue = Move('ResolvedClue', 'c', 'move player type param cards')
-ResolvedPlay = Move('ResolvedPlay', 'p', 'move card new_card is_success')
-ResolvedDiscard = Move('ResolvedDiscard', 'd', 'move card new_card')
-Draw = Move('Draw', 'n', 'move card')
-Clue = Move('Clue', 'c', 'move player type param')
-Play = Move('Play', 'p', 'move card_id')
-Discard = Move('Discard', 'd', 'move card_id')
+        IDENTIFIER_TO_MOVE[identifier] = Move
+    return Move
+ResolvedClue = move_tuple('ResolvedClue', 'c', 'move player type param cards')
+ResolvedPlay = move_tuple('ResolvedPlay', 'p', 'move card new_card is_success')
+ResolvedDiscard = move_tuple('ResolvedDisc', 'd', 'move card new_card')
+ResolvedDraw = move_tuple('ResolvedDraw', 'n', 'move card')
+Clue = move_tuple('Clue', 'c', 'move player type param')
+Play = move_tuple('Play', 'p', 'move card_id')
+Discard = move_tuple('Discard', 'd', 'move card_id')
 
-
-def tuple_to_move(tup):
+def tuple_to_move(tup: Tuple) -> NamedTuple:
     return IDENTIFIER_TO_MOVE[tup[0]]._make(tup)
 
-DEFAULT_RULES = Rules(max_tokens=Tokens(8, 4), suits=5, ranks=[3,2,2,2,1], cards_per_player=None)
+
+DEFAULT_RULES = Rules(max_tokens=Tokens(8, 4), cards_per_player=None, suits=5, ranks=[3, 2, 2, 2, 1])
+
 class Hanabi:
     def __init__(self, players, rules=DEFAULT_RULES, deck=None, allow_cheats=False, end_mode=EndMode.official):
         if rules.cards_per_player is None:
@@ -77,7 +76,7 @@ class Hanabi:
         self.current_player = None
 
         if deck is None:
-            self.deck = self.new_shuffled_deck()
+            self.deck = self.new_shuffled_deck(self.rules.suits, self.rules.ranks)
         self.hands = [[] for _ in players]
         self.tokens = self.rules.max_tokens
         self.log = []
@@ -104,22 +103,22 @@ class Hanabi:
                 if self.is_game_over():
                     return self.score
 
-    def new_shuffled_deck(self):
+    @classmethod
+    def new_shuffled_deck(cls, suits, ranks):
         cards = []
-        for suit in range(self.rules.suits):
-            for rank, count in enumerate(self.rules.ranks):
-                for item in range(count):
-                    cards.append(KnownCard(suit, rank))
+        for suit in range(suits):
+            for rank, count in enumerate(ranks):
+                cards += [KnownCard(suit, rank)] * count
         random.shuffle(cards)
         return list(reversed([Card(card_id, card) for card_id, card in enumerate(cards)]))
 
     def deal_cards(self):
         for player in self.iterate_players():
-            for _ in range(self.rules.cards_per_player):
+            for _i in range(self.rules.cards_per_player):
                 card = self.take_hidden_card_from_deck()
                 if card is None:
                     raise RuntimeError("not enough cards to deal")
-                self.log.append(Draw.create(card))
+                self.log.append(ResolvedDraw.create(card))
 
     def iterate_players(self):
         for i in range(len(self.players)):
@@ -141,7 +140,7 @@ class Hanabi:
         if self.end_mode == EndMode.endless and not [i for i in self.hands[(self.current_player + 1) % len(self.hands)] if i]:
             return True
         return (self.lives == 0 or self.final_player == self.current_player or
-            all(slot == len(self.rules.ranks) for slot in self.slots))
+                all(slot == len(self.rules.ranks) for slot in self.slots))
 
     def resolve(self, move):
         if isinstance(move, Clue):
@@ -198,11 +197,9 @@ class Hanabi:
     def take_card_from_current_hand(self, card_id):
         for i, card in enumerate(self.hands[self.current_player]):
             if card.id == card_id:
-                break
-        else:
-            raise IllegalMove(f'no such card in hand: {card_id}')
-        del self.hands[self.current_player][i]
-        return card
+                del self.hands[self.current_player][i]
+                return card
+        raise IllegalMove(f'no such card in hand: {card_id}')
 
     def print(self):
         for attr in ['log', 'tokens', 'slots', 'hands', 'discard_pile', 'score']:
@@ -210,17 +207,19 @@ class Hanabi:
             pprint(getattr(self, attr))
 
 
-def run_game_n_times(player, t, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
+def run_game_n_times(player, times, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
     score = []
-    for i in range(t):
+    for _t in range(times):
         h = Hanabi([player] * num_players, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
         score.append(h.run())
 
     import pandas as pd
-    d = pd.Series(score)
-    print(d.describe())
-    print(d.value_counts(sort=False))
-    return d
+    scores = pd.Series(score)
+    print(scores.describe())
+    hist = scores.value_counts(sort=False).sort_index()
+    print(hist)
+    hist.plot(style='o', logy=True)
+    return scores
 
 
 def run_game_once(player, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):

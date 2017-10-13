@@ -6,6 +6,9 @@ from hanabi import Clue, Play, Discard
 def make_io_player(name):
     """
     Aur's basic IO player generator
+
+    usage:
+        h = Hanabi([make_io_player('Aur'), make_io_player('Ofer')])
     """
     def io_player(state, log, hands, rules, tokens, slots, discard_pile):
         print(f"{name}'s turn")
@@ -19,17 +22,20 @@ def make_io_player(name):
         move = input().split()
         try:
             if move[0] == 'c':
-                _, ptn = move
-                p, t, n = ptn
-                t = {'s': 'suit', 'n': 'rank'}[t]
-                return state, Clue.create(int(p), t, int(n))
+                _, (player, clue_type, param) = move
+                return state, Clue.create(
+                    int(player),
+                    {'s': 'suit', 'n': 'rank'}[clue_type],
+                    int(param))
             elif move[0] == 'p':
                 _, card_id = move
                 return state, Play.create(int(card_id))
             elif move[0] == 'd':
                 _, card_id = move
                 return state, Discard.create(int(card_id))
-        except:
+            else:
+                raise ValueError("not a valid move type")
+        except (ValueError, KeyError):
             print('illegal move')
             return io_player(state, log, hands, rules, tokens, slots, discard_pile)
     return io_player
@@ -38,6 +44,9 @@ def make_io_player(name):
 def random_player(state, log, hands, rules, tokens, slots, discard_pile):
     """
     Zvika and Ofer's random player
+
+    Usage:
+        h = Hanabi([random_player] * 3)
     """
     my_id = len(log) % len(hands)
 
@@ -56,15 +65,7 @@ def random_player(state, log, hands, rules, tokens, slots, discard_pile):
         return state, Discard.create(random.choice(hands[my_id]).id)
     if action == Clue:
         player = random.choice([i for i in range(len(hands)) if i != my_id])
-        type = random.choice(['suit', 'rank'])
-        return state, Clue.create(player, type, getattr(random.choice(hands[player]).data, type))
-
-"""
-h = Hanabi([random_player, random_player, random_player])
-print(h.run())
-print(h.log)
-
-
-
-Hanabi([make_io_player('Aur'), make_io_player('Ofer')]).run()
-"""
+        clue_type = random.choice(['suit', 'rank'])
+        return state, Clue.create(
+            player, clue_type,
+            getattr(random.choice(hands[player]).data, clue_type))
