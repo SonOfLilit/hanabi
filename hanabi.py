@@ -14,6 +14,9 @@ class EndMode(Enum):
     fair = 3
 
 
+class IllegalMove(Exception):
+    pass
+
 class KnownCard(namedtuple('KnownCard', 'suit rank')):
     def __repr__(self):
         return f':s{self.suit}r{self.rank}'
@@ -40,7 +43,7 @@ IDENTIFIER_TO_MOVE = {}
 
 
 def Move(name, identifier, items):
-    class MyMove(namedtuple(name, items)):
+    class MyMove(namedtuple(name, items)):  # FIX ME
         @classmethod
         def create(cls, *args, **kwargs):
             ret = cls(cls.identifier, *args, **kwargs)
@@ -89,7 +92,8 @@ class Hanabi:
         self.discard_pile = [[0] * len(self.rules.ranks) for _ in range(self.rules.suits)]
 
     def run(self):
-        assert not self.log
+        if self.log:
+            raise RuntimeError("run already done")
         self.deal_cards()
         while True:
             for i in self.iterate_players():
@@ -117,7 +121,8 @@ class Hanabi:
         for player in self.iterate_players():
             for _ in range(self.rules.cards_per_player):
                 card = self.take_hidden_card_from_deck()
-                assert card is not None
+                if card is None:
+                    raise RuntimeError("not enough cards to deal")
                 self.log.append(Draw.create(card))
 
     def iterate_players(self):
@@ -144,11 +149,14 @@ class Hanabi:
 
     def resolve(self, move):
         if isinstance(move, Clue):
-            assert self.clues > 0
-            self.clues -= 1
-            assert move.player != self.current_player
+            if not self.clues > 0:
+                raise IllegalMove("no clues to give")
+            if not move.player != self.current_player:
+                raise IllegalMove("can't clue yourself")
             cards = [card.hidden() for card in self.hands[move.player] if getattr(card.known, move.type) == move.param]
-            assert cards
+            if not cards:
+                raise IllegalMove("no empty clues")
+            self.clues -= 1
             self.log.append(ResolvedClue.create(move.player, move.type, move.param, cards))
         elif isinstance(move, Play):
             card = self.take_card_from_current_hand(move.card_id)
@@ -171,7 +179,7 @@ class Hanabi:
             drawn = self.take_hidden_card_from_deck()
             self.log.append(ResolvedDiscard.create(card, drawn))
         else:
-            assert False, 'no such move'
+            raise IllegalMove('no such move')
 
     @property
     def clues(self):
@@ -196,7 +204,7 @@ class Hanabi:
             if card.id == card_id:
                 break
         else:
-            assert False, f'no such card in hand: {card_id}'
+            raise IllegalMove(f'no such card in hand: {card_id}')
         del self.hands[self.current_player][i]
         return card
 

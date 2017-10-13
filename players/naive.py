@@ -7,8 +7,7 @@ def naive_player(state, log, hands, rules, tokens, slots, discard_pile):
     """
     ignore_clues_after_play = True
     my_id = len(log) % len(hands)
-    if state is None:
-        state = set()
+    hinted_cards = set()
 
     my_card_ids = [card.id for card in hands[my_id]]
 
@@ -16,15 +15,10 @@ def naive_player(state, log, hands, rules, tokens, slots, discard_pile):
         if move.__name__ == 'ResolvedClue':  # FIX_ME
             if move.player == my_id:
                 for card in move.cards:
-                    state.add(card.id)
+                    hinted_cards.add(card.id)
 
-    if not ignore_clues_after_play:
-        state = state.intersection(my_card_ids)
-
-    if state:  # Its better to play than hint
-        play_card = max(state)
-        if ignore_clues_after_play:
-            state = set()
+    if hinted_cards:  # Its better to play than hint
+        play_card = max(hinted_cards)
         return state, Play.create(play_card)
 
     if tokens.clues > 0:  # Its better to hint than discard

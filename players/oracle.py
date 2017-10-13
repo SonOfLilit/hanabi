@@ -8,6 +8,9 @@ def oracle_player(state, log, hands, rules, tokens, slots, discard_pile):
     my_id = len(log) % len(hands)
 
     my_hand = hands[my_id]
+
+    if my_hand[0].known is None:
+        raise RuntimeError("I need to be omniscient")
     playable_card = None
     for card in my_hand:
         if slots[card.known.suit] == card.known.rank:
