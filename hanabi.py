@@ -1,9 +1,12 @@
+import random
+from itertools import cycle
 from collections import namedtuple
 import random
 
 class KnownCard(namedtuple('KnownCard', 'suit rank')):
     def __repr__(self):
         return f':{self.suit}{self.rank}'
+
 class Card(namedtuple('Card', 'id known')):
     def __repr__(self):
         return f'#{self.id}{self.known or ""}'
@@ -12,17 +15,22 @@ class Card(namedtuple('Card', 'id known')):
             return self._replace(known=None)
         return self
 
+
 class Tokens(namedtuple('Tokens', 'clues lives')):
     pass
+
+
 class Rules(namedtuple('Rules', 'max_tokens suits ranks cards_per_player')):
     pass
 
 IDENTIFIER_TO_MOVE = {}
+
+
 def Move(name, identifier, items):
     class MyMove(namedtuple(name, items)):
         @classmethod
-        def create(cls, *data):
-            return cls(cls.identifier, *data)
+        def create(cls, *args, **kwargs):
+            return cls(cls.identifier, *args, **kwargs)
     MyMove.identifier = identifier
     MyMove.__name__ = name
     if 'Resolved' not in name:
@@ -36,8 +44,10 @@ Clue = Move('Clue', 'c', 'move player type param')
 Play = Move('Play', 'p', 'move card_id')
 Discard = Move('Discard', 'd', 'move card_id')
 
+
 def tuple_to_move(tup):
     return IDENTIFIER_TO_MOVE[tup[0]]._make(tup)
+
 
 class Hanabi:
     def __init__(self, players, rules=Rules(max_tokens=Tokens(8, 4), suits=5, ranks=[3,2,2,2,1], cards_per_player=None), deck=None):
@@ -46,6 +56,8 @@ class Hanabi:
         self.players = players
         self.rules = rules
         self.deck = deck
+
+        self.current_player = None
 
         if deck is None:
             self.deck = self.new_shuffled_deck()
@@ -77,7 +89,7 @@ class Hanabi:
                 for item in range(count):
                     cards.append(KnownCard(suit, rank))
         random.shuffle(cards)
-        return list(reversed([Card(id, card) for id, card in enumerate(cards)]))
+        return list(reversed([Card(card_id, card) for card_id, card in enumerate(cards)]))
 
     def deal_cards(self):
         for player in self.iterate_players():
@@ -176,7 +188,6 @@ def my_player(state, log, hands, rules, tokens, slots, discard_pile):
 '''
 
 from pprint import pprint
-
 def make_io_player(name):
     def io_player(state, log, hands, rules, tokens, slots, discard_pile):
         print(f"{name}'s turn")
@@ -205,4 +216,30 @@ def make_io_player(name):
             return io_player(state, log, hands, rules, tokens, slots, discard_pile)
     return io_player
 
+
+def random_player(state, log, hands, rules, tokens, slots, discard_pile):
+    my_id = len(log) % len(hands)
+
+    possible_actions = [Play]
+    if tokens.clues > 0:
+        possible_actions.append(Clue)
+
+    if tokens.clues < rules.max_tokens.clues:
+        possible_actions.append(Discard)
+
+    action = random.choice(possible_actions)
+
+    if isinstance(action, Play):
+        return state, Play(random.choice(hands[my_id]).id)
+    if isinstance(action, Discard):
+        return state, Discard(random.choice(hands[my_id]).id)
+    if isinstance(action, Clue):
+        player = random.choice([i for i in range(len(hands)) if i != my_id])
+        type = random.choice(['suit', 'rank'])
+        return state, Clue(player, type, getattr(random.choice(hands[player]).known, type))
+
+
+#h = Hanabi([random_player, random_player, random_player])
+#print(h.run())
+#print(h.log)
 Hanabi([make_io_player('Aur'), make_io_player('Ofer')]).run()
