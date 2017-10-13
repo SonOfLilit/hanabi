@@ -57,7 +57,7 @@ def random_player(state, log, hands, rules, tokens, slots, discard_pile):
     if action == Clue:
         player = random.choice([i for i in range(len(hands)) if i != my_id])
         type = random.choice(['suit', 'rank'])
-        return state, Clue.create(player, type, getattr(random.choice(hands[player]).known, type))
+        return state, Clue.create(player, type, getattr(random.choice(hands[player]).data, type))
 
 """
 h = Hanabi([random_player, random_player, random_player])

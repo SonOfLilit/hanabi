@@ -9,12 +9,12 @@ def oracle_player(state, log, hands, rules, tokens, slots, discard_pile):
 
     my_hand = hands[my_id]
 
-    if my_hand[0].known is None:
+    if my_hand[0].data is None:
         raise RuntimeError("I need to be omniscient")
     playable_card = None
     for card in my_hand:
-        if slots[card.known.suit] == card.known.rank:
-            if playable_card is None or playable_card.known.rank < card.known.rank:
+        if slots[card.data.suit] == card.data.rank:
+            if playable_card is None or playable_card.data.rank < card.data.rank:
                 playable_card = card
 
     if playable_card is not None:
@@ -23,7 +23,7 @@ def oracle_player(state, log, hands, rules, tokens, slots, discard_pile):
     def get_card_to_discard():
         # discard already played
         for card in my_hand:
-            if slots[card.known.suit] > card.known.rank:
+            if slots[card.data.suit] > card.data.rank:
                 return card.id
         # discard unreachable
         for suit in range(rules.suits):
@@ -35,11 +35,11 @@ def oracle_player(state, log, hands, rules, tokens, slots, discard_pile):
                     break
             if max_rank_in_suit:
                 for card in my_hand:
-                    if card.known.suit == suit and card.known.rank > max_rank_in_suit:
+                    if card.data.suit == suit and card.data.rank > max_rank_in_suit:
                         return card.id
 
         # discard duplicates in own hand
-        knowns = [card.known for card in my_hand]
+        knowns = [card.data for card in my_hand]
         if len(set(knowns)) < len(knowns):
             for i, known in enumerate(knowns):
                 for known2 in knowns[i:]:
@@ -47,9 +47,9 @@ def oracle_player(state, log, hands, rules, tokens, slots, discard_pile):
                         return my_hand[i].id
 
         # discard duplicates with others
-        knowns = [card.known for card in my_hand]
+        knowns = [card.data for card in my_hand]
         for hand in hands[:my_id]+hands[my_id+1:]:
-            knowns2 = [card.known for card in hand]
+            knowns2 = [card.data for card in hand]
             if len(set(knowns+knowns2)) < len(knowns)+len(set(knowns2)):
                 for i, known in enumerate(knowns):
                     for known2 in knowns2:
@@ -64,7 +64,7 @@ def oracle_player(state, log, hands, rules, tokens, slots, discard_pile):
     if tokens.clues > 0:
         player = (my_id + 1) % len(hands)
         if hands[player]:
-            return state, Clue.create(player, 'suit', hands[player][0].known.suit)
+            return state, Clue.create(player, 'suit', hands[player][0].data.suit)
 
     if tokens.lives > 1:
         card = get_card_to_discard()
@@ -74,7 +74,7 @@ def oracle_player(state, log, hands, rules, tokens, slots, discard_pile):
     diff = None
     throw = None
     for card in my_hand:
-        card_diff = card.known.rank - slots[card.known.suit]
+        card_diff = card.data.rank - slots[card.data.suit]
         if diff is None or card_diff > diff:
             diff = card_diff
             throw = card

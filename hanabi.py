@@ -22,13 +22,13 @@ class KnownCard(namedtuple('KnownCard', 'suit rank')):
         return f':s{self.suit}r{self.rank}'
 
 
-class Card(namedtuple('Card', 'id known')):
+class Card(namedtuple('Card', 'id data')):
     def __repr__(self):
-        return f'#{self.id}{self.known or ""}'
+        return f'#{self.id}{self.data or ""}'
 
     def hidden(self):
-        if self.known is not None:
-            return self._replace(known=None)
+        if self.data is not None:
+            return self._replace(data=None)
         return self
 
 
@@ -153,28 +153,28 @@ class Hanabi:
                 raise IllegalMove("no clues to give")
             if not move.player != self.current_player:
                 raise IllegalMove("can't clue yourself")
-            cards = [card.hidden() for card in self.hands[move.player] if getattr(card.known, move.type) == move.param]
+            cards = [card.hidden() for card in self.hands[move.player] if getattr(card.data, move.type) == move.param]
             if not cards:
                 raise IllegalMove("no empty clues")
             self.clues -= 1
             self.log.append(ResolvedClue.create(move.player, move.type, move.param, cards))
         elif isinstance(move, Play):
             card = self.take_card_from_current_hand(move.card_id)
-            is_success = self.slots[card.known.suit] == card.known.rank
+            is_success = self.slots[card.data.suit] == card.data.rank
             if is_success:
-                self.slots[card.known.suit] += 1
-                if self.slots[card.known.suit] == len(self.rules.ranks):
+                self.slots[card.data.suit] += 1
+                if self.slots[card.data.suit] == len(self.rules.ranks):
                     if self.clues < self.rules.max_tokens.clues:
                         self.clues += 1
             else:
-                self.discard_pile[card.known.suit][card.known.rank] += 1
+                self.discard_pile[card.data.suit][card.data.rank] += 1
                 self.lives -= 1
                 assert self.lives >= 0
             drawn = self.take_hidden_card_from_deck()
             self.log.append(ResolvedPlay.create(card, drawn, is_success))
         elif isinstance(move, Discard):
             card = self.take_card_from_current_hand(move.card_id)
-            self.discard_pile[card.known.suit][card.known.rank] += 1
+            self.discard_pile[card.data.suit][card.data.rank] += 1
             self.clues += 1
             drawn = self.take_hidden_card_from_deck()
             self.log.append(ResolvedDiscard.create(card, drawn))

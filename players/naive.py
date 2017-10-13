@@ -1,6 +1,5 @@
 from hanabi import Clue, Play, Discard, ResolvedClue
 
-
 def naive_player(state, log, hands, rules, tokens, slots, discard_pile):
     """
     Zvika and Ofer's naive player
@@ -24,12 +23,12 @@ def naive_player(state, log, hands, rules, tokens, slots, discard_pile):
     if tokens.clues > 0:  # Its better to hint than discard
         for i in range(len(hands) - 1):
             player = (my_id + i + 1) % len(hands)
-            player_suits = set([card.known.suit for card in hands[player]])
-            player_ranks = set([card.known.rank for card in hands[player]])
+            player_suits = set([card.data.suit for card in hands[player]])
+            player_ranks = set([card.data.rank for card in hands[player]])
             for card in hands[player]:
-                if slots[card.known.suit] != card.known.rank:
-                    player_suits -= set([card.known.suit])
-                    player_ranks -= set([card.known.rank])
+                if slots[card.data.suit] != card.data.rank:
+                    player_suits -= set([card.data.suit])
+                    player_ranks -= set([card.data.rank])
 
             if player_ranks:
                 return state, Clue.create(player, 'rank', max(player_ranks))  # its better to go up then sideways
