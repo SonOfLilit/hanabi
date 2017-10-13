@@ -1,4 +1,5 @@
 import random
+from pprint import pprint
 from itertools import cycle
 from collections import namedtuple
 import random
@@ -30,7 +31,10 @@ def Move(name, identifier, items):
     class MyMove(namedtuple(name, items)):
         @classmethod
         def create(cls, *args, **kwargs):
-            return cls(cls.identifier, *args, **kwargs)
+            ret = cls(cls.identifier, *args, **kwargs)
+            ret.__name__ = name
+            ret.identifier = identifier
+            return ret
     MyMove.identifier = identifier
     MyMove.__name__ = name
     if 'Resolved' not in name:
@@ -176,15 +180,17 @@ class Hanabi:
             print(f'{attr}:')
             pprint(getattr(self, attr))
 
-if __name__ == '__main__':
-    from players.base import random_player
-    from pprint import pprint
+def main():
+    from players.naive import naive_player as player
     score = []
-    for i in range(100):
-        h = Hanabi([random_player, random_player, random_player])
+    for i in range(1000):
+        h = Hanabi([player, player, player])
         score.append(h.run())
 
     import pandas as pd
     d = pd.Series(score)
     print(d.describe())
-    print(d.value_counts())
+    print(d.value_counts(sort=False))
+
+if __name__ == '__main__':
+    main()
