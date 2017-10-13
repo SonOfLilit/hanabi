@@ -1,13 +1,15 @@
 import random
 from itertools import cycle
 from collections import namedtuple
-
+import random
 
 class KnownCard(namedtuple('KnownCard', 'suit rank')):
-    pass
-
+    def __repr__(self):
+        return f':{self.suit}{self.rank}'
 
 class Card(namedtuple('Card', 'id known')):
+    def __repr__(self):
+        return f'#{self.id}{self.known or ""}'
     def hidden(self):
         if self.known is not None:
             return self._replace(known=None)
@@ -34,14 +36,13 @@ def Move(name, identifier, items):
     if 'Resolved' not in name:
         IDENTIFIER_TO_MOVE[identifier] = MyMove
     return MyMove
-
-Draw = Move('Draw', 'n', 'move card')
-Clue = Move('Clue', 'c', 'move player type param')
 ResolvedClue = Move('ResolvedClue', 'c', 'move player type param cards')
-Play = Move('Play', 'p', 'move card_id')
-Discard = Move('Discard', 'd', 'move card_id')
 ResolvedPlay = Move('ResolvedPlay', 'p', 'move card new_card is_success')
 ResolvedDiscard = Move('ResolvedDiscard', 'd', 'move card new_card')
+Draw = Move('Draw', 'n', 'move card')
+Clue = Move('Clue', 'c', 'move player type param')
+Play = Move('Play', 'p', 'move card_id')
+Discard = Move('Discard', 'd', 'move card_id')
 
 
 def tuple_to_move(tup):
@@ -71,14 +72,15 @@ class Hanabi:
 
     def run(self):
         self.deal_cards()
-        for i, player in cycle(enumerate(self.players)):
-            self.current_player = i
-            hands = list(self.hands)
-            hands[i] = [card.hidden() for card in hands[i]]
-            self.player_states[i], move = player(self.player_states[i], self.log, hands, self.rules, self.tokens, self.slots, self.discard_pile)
-            self.resolve(tuple_to_move(move))
-            if self.is_game_over():
-                return sum(self.slots)
+        while True:
+            for i in self.iterate_players():
+                hands = list(self.hands)
+                hands[i] = [card.hidden() for card in hands[i]]
+                player = self.players[self.current_player]
+                self.player_states[i], move = player(self.player_states[i], self.log, hands, self.rules, self.tokens, self.slots, self.discard_pile)
+                self.resolve(tuple_to_move(move))
+                if self.is_game_over():
+                    return sum(self.slots)
 
     def new_shuffled_deck(self):
         cards = []
@@ -87,14 +89,19 @@ class Hanabi:
                 for item in range(count):
                     cards.append(KnownCard(suit, rank))
         random.shuffle(cards)
-        return [Card(card_id, card) for card_id, card in enumerate(cards)]
+        return list(reversed([Card(card_id, card) for card_id, card in enumerate(cards)]))
 
     def deal_cards(self):
-        for player in range(len(self.players)):
-            for i in range(self.rules.cards_per_player):
+        for player in self.iterate_players():
+            for _ in range(self.rules.cards_per_player):
                 card = self.take_hidden_card_from_deck()
                 assert card is not None
                 self.log.append(Draw.create(card))
+
+    def iterate_players(self):
+        for i in range(len(self.players)):
+            self.current_player = i
+            yield i
 
     def take_hidden_card_from_deck(self):
         if not self.deck:
@@ -114,13 +121,12 @@ class Hanabi:
             assert self.clues > 0
             self.clues -= 1
             assert move.player != self.current_player
-            type = move.type
-            cards = [card.hidden() for card in self.hands[move.player] if getattr(card.known, type) == move.param]
+            cards = [card.hidden() for card in self.hands[move.player] if getattr(card.known, move.type) == move.param]
             assert cards
             self.log.append(ResolvedClue.create(move.player, move.type, move.param, cards))
         elif isinstance(move, Play):
             card = self.take_card_from_current_hand(move.card_id)
-            is_success = self.slots[card.known.suit] + 1 == card.known.rank
+            is_success = self.slots[card.known.suit] == card.known.rank
             if is_success:
                 self.slots[card.known.suit] += 1
                 if self.slots[card.known.suit] == len(self.rules.ranks):
@@ -181,6 +187,35 @@ def my_player(state, log, hands, rules, tokens, slots, discard_pile):
     return action, new_state
 '''
 
+from pprint import pprint
+def make_io_player(name):
+    def io_player(state, log, hands, rules, tokens, slots, discard_pile):
+        print(f"{name}'s turn")
+        pprint(log[-len(hands):])
+        pprint(hands)
+        pprint(tokens)
+        pprint(slots)
+        pprint(discard_pile)
+        pprint('What will it be?')
+        pprint('[c]lue <player><type><n>\t\t[p]lay <card>\t\t[d]iscard <card>')
+        move = input().split()
+        try:
+            if move[0] == 'c':
+                _, ptn = move
+                p, t, n = ptn
+                t = {'s': 'suit', 'n': 'rank'}[t]
+                return state, Clue.create(int(p), t, int(n))
+            elif move[0] == 'p':
+                _, card_id = move
+                return state, Play.create(int(card_id))
+            elif move[0] == 'd':
+                _, card_id = move
+                return state, Discard.create(int(card_id))
+        except:
+            print('illegal move')
+            return io_player(state, log, hands, rules, tokens, slots, discard_pile)
+    return io_player
+
 
 def random_player(state, log, hands, rules, tokens, slots, discard_pile):
     my_id = len(log) % len(hands)
@@ -204,10 +239,7 @@ def random_player(state, log, hands, rules, tokens, slots, discard_pile):
         return state, Clue(player, type, getattr(random.choice(hands[player]).known, type))
 
 
-h = Hanabi([random_player, random_player, random_player])
-print(h.run())
-print(h.log)
-
-
-
-
+#h = Hanabi([random_player, random_player, random_player])
+#print(h.run())
+#print(h.log)
+Hanabi([make_io_player('Aur'), make_io_player('Ofer')]).run()
