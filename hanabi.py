@@ -6,7 +6,7 @@ from typing import List, NamedTuple, Tuple
 
 import colorama
 colorama.init()
-suits_col = [colorama.Fore.RED, colorama.Fore.GREEN, colorama.Fore.YELLOW, 
+suits_col = [colorama.Fore.RED, colorama.Fore.GREEN, colorama.Fore.YELLOW,
              colorama.Fore.BLUE, colorama.Fore.MAGENTA, colorama.Fore.CYAN, ]
 
 class EndMode(Enum):
