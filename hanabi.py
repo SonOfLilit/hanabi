@@ -2,15 +2,27 @@ import random
 from pprint import pprint
 from itertools import cycle
 from collections import namedtuple
+import argparse
 import random
+import importlib
+from enum import Enum
+
+
+class EndMode(Enum):
+    official = 1
+    endless = 2
+    fair = 3
+
 
 class KnownCard(namedtuple('KnownCard', 'suit rank')):
     def __repr__(self):
-        return f':{self.suit}{self.rank}'
+        return f':s{self.suit}r{self.rank}'
+
 
 class Card(namedtuple('Card', 'id known')):
     def __repr__(self):
         return f'#{self.id}{self.known or ""}'
+
     def hidden(self):
         if self.known is not None:
             return self._replace(known=None)
@@ -52,14 +64,16 @@ Discard = Move('Discard', 'd', 'move card_id')
 def tuple_to_move(tup):
     return IDENTIFIER_TO_MOVE[tup[0]]._make(tup)
 
-
+DEFAULT_RULES = Rules(max_tokens=Tokens(8, 4), suits=5, ranks=[3,2,2,2,1], cards_per_player=None)
 class Hanabi:
-    def __init__(self, players, rules=Rules(max_tokens=Tokens(8, 4), suits=5, ranks=[3,2,2,2,1], cards_per_player=None), deck=None):
+    def __init__(self, players, rules=DEFAULT_RULES, deck=None, allow_cheats=False, end_mode=EndMode.official):
         if rules.cards_per_player is None:
             rules = rules._replace(cards_per_player=5 if len(players) <= 3 else 4)
         self.players = players
         self.rules = rules
         self.deck = deck
+        self.allow_cheats = allow_cheats
+        self.end_mode = EndMode(end_mode)
 
         self.current_player = None
 
@@ -79,13 +93,16 @@ class Hanabi:
         self.deal_cards()
         while True:
             for i in self.iterate_players():
+                if isinstance(self.final_player, tuple):
+                    self.final_player = self.final_player[1]
                 hands = list(self.hands)
-                hands[i] = [card.hidden() for card in hands[i]]
+                if not self.allow_cheats:
+                    hands[i] = [card.hidden() for card in hands[i]]
                 player = self.players[self.current_player]
                 self.player_states[i], move = player(self.player_states[i], self.log, hands, self.rules, self.tokens, self.slots, self.discard_pile)
                 self.resolve(tuple_to_move(move))
                 if self.is_game_over():
-                    return sum(self.slots)
+                    return self.score
 
     def new_shuffled_deck(self):
         cards = []
@@ -110,14 +127,18 @@ class Hanabi:
 
     def take_hidden_card_from_deck(self):
         if not self.deck:
+            if self.end_mode == EndMode.fair and self.final_player is None:
+                self.final_player = (self.current_player - 1) % len(self.hands)
             return None
         card = self.deck.pop()
-        if not self.deck:
-            self.final_player = self.current_player
+        if self.end_mode == EndMode.official and not self.deck and self.final_player is None:
+            self.final_player = (None, self.current_player)
         self.hands[self.current_player].append(card)
         return card.hidden()
 
     def is_game_over(self):
+        if self.end_mode == EndMode.endless and not [i for i in self.hands[(self.current_player + 1) % len(self.hands)] if i]:
+            return True
         return (self.lives == 0 or self.final_player == self.current_player or
             all(slot == len(self.rules.ranks) for slot in self.slots))
 
@@ -160,6 +181,10 @@ class Hanabi:
         self.tokens = self.tokens._replace(clues=value)
 
     @property
+    def score(self):
+        return sum(self.slots) if self.lives > 0 else 0
+
+    @property
     def lives(self):
         return self.tokens.lives
     @lives.setter
@@ -176,21 +201,48 @@ class Hanabi:
         return card
 
     def print(self):
-        for attr in ['log', 'tokens', 'slots', 'discard_pile']:
+        for attr in ['log', 'tokens', 'slots', 'hands', 'discard_pile', 'score']:
             print(f'{attr}:')
             pprint(getattr(self, attr))
 
-def main():
-    from players.naive import naive_player as player
+
+def run_game_n_times(player, t, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
     score = []
-    for i in range(1000):
-        h = Hanabi([player, player, player])
+    for i in range(t):
+        h = Hanabi([player] * num_players, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
         score.append(h.run())
 
     import pandas as pd
     d = pd.Series(score)
     print(d.describe())
     print(d.value_counts(sort=False))
+    return d
+
+
+def run_game_once(player, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
+    h = Hanabi([player] * num_players, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
+    h.run()
+    h.print()
+    return h
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('player_name')
+    parser.add_argument('-t', '--times', default=1, type=int)
+    parser.add_argument('-n', '--players', default=3, type=int)
+    parser.add_argument('-c', '--allow-cheats', default=False, action='store_true')
+    parser.add_argument('-e', '--end-mode', default='official', choices=['official', 'endless', 'fair'])
+    parser.add_argument('-s', '--suits', default=5, type=int)
+
+    args = parser.parse_args()
+    lib = importlib.import_module(f'players')
+    player = getattr(lib, args.player_name)
+    h_args = (args.players, EndMode[args.end_mode], args.suits, args.allow_cheats)
+    if args.times > 1:
+        return run_game_n_times(player, args.times, *h_args)
+    else:
+        return run_game_once(player, *h_args)
 
 if __name__ == '__main__':
     main()
