@@ -19,7 +19,7 @@ class IllegalMove(Exception):
 
 class KnownCard(namedtuple('KnownCard', 'suit rank')):
     def __repr__(self):
-        return f':{chr(ord("A")+self.suit)}{self.rank}'
+        return f':{suits_col[self.suit]}{chr(ord("A")+self.suit)}{self.rank}'
 
 class Card(namedtuple('Card', 'id data')):
     def __repr__(self):
@@ -48,10 +48,10 @@ def move_tuple(name: str, identifier: str, items: (str, List[str])) -> NamedTupl
     if 'Resolved' not in name:
         IDENTIFIER_TO_MOVE[identifier] = Move
     return Move
-ResolvedClue = move_tuple('ResolvedClue', 'c', 'move player type param cards')
-ResolvedPlay = move_tuple('ResolvedPlay', 'p', 'move card new_card is_success')
-ResolvedDiscard = move_tuple('ResolvedDisc', 'd', 'move card new_card')
-ResolvedDraw = move_tuple('ResolvedDraw', 'n', 'move card')
+ResolvedClue = move_tuple('ResolvedClue', 'c', 'move cur_player player type param cards')
+ResolvedPlay = move_tuple('ResolvedPlay', 'p', 'move cur_player card new_card is_success')
+ResolvedDiscard = move_tuple('ResolvedDisc', 'd', 'move cur_player card new_card')
+ResolvedDraw = move_tuple('ResolvedDraw', 'n', 'move cur_player card')
 Clue = move_tuple('Clue', 'c', 'move player type param')
 Play = move_tuple('Play', 'p', 'move card_id')
 Discard = move_tuple('Discard', 'd', 'move card_id')
@@ -119,7 +119,7 @@ class Hanabi:
                 card = self.take_hidden_card_from_deck()
                 if card is None:
                     raise RuntimeError("not enough cards to deal")
-                self.log.append(ResolvedDraw.create(card))
+                self.log.append(ResolvedDraw.create(self.current_player, card))
 
     def iterate_players(self):
         for i in range(len(self.players)):
@@ -153,7 +153,7 @@ class Hanabi:
             if not cards:
                 raise IllegalMove("no empty clues")
             self.clues -= 1
-            self.log.append(ResolvedClue.create(move.player, move.type, move.param, cards))
+            self.log.append(ResolvedClue.create(self.current_player, move.player, move.type, move.param, cards))
         elif isinstance(move, Play):
             card = self.take_card_from_current_hand(move.card_id)
             is_success = self.slots[card.data.suit] == card.data.rank
@@ -167,13 +167,13 @@ class Hanabi:
                 self.lives -= 1
                 assert self.lives >= 0
             drawn = self.take_hidden_card_from_deck()
-            self.log.append(ResolvedPlay.create(card, drawn, is_success))
+            self.log.append(ResolvedPlay.create(self.current_player, card, drawn, is_success))
         elif isinstance(move, Discard):
             card = self.take_card_from_current_hand(move.card_id)
             self.discard_pile[card.data.suit][card.data.rank] += 1
             self.clues += 1
             drawn = self.take_hidden_card_from_deck()
-            self.log.append(ResolvedDiscard.create(card, drawn))
+            self.log.append(ResolvedDiscard.create(self.current_player, card, drawn))
         else:
             raise IllegalMove('no such move')
 
