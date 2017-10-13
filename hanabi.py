@@ -71,6 +71,7 @@ class Hanabi:
         self.discard_pile = [[0] * len(self.rules.ranks) for _ in range(self.rules.suits)]
 
     def run(self):
+        assert not self.log
         self.deal_cards()
         while True:
             for i in self.iterate_players():
@@ -141,7 +142,7 @@ class Hanabi:
         elif isinstance(move, Discard):
             card = self.take_card_from_current_hand(move.card_id)
             self.discard_pile[card.known.suit][card.known.rank] += 1
-            self.lives -= 1
+            self.clues += 1
             drawn = self.take_hidden_card_from_deck()
             self.log.append(ResolvedDiscard.create(card, drawn))
         else:
@@ -170,76 +171,21 @@ class Hanabi:
         del self.hands[self.current_player][i]
         return card
 
-'''
-my_player(
-    state=...,
-    log=['c #01', 'c #02', 'c #03', ..., 'p #08:23 c #09', 'd #01:23 c#10', 'i 0s2 #02 #03 #04', 'h 0n2 #02 #03 #04'],
-    log=[(p/d, #, c#), (i, player, s/n, sn#, list_of_ids)]
-    hands=[['#07:24', '#09:32'], ['#10', '#17'], ['#20:15', ...], ...],
-    rules=Rules(...),
-    tokens=Tokens(1,1),
-    slots=[4,1,3,0,5],
-    discard_pile=[[1,1,0,2,0], [2,1,0,1,0], [0,0,1,0,0], [0,0,0,0,0], [0,0,0,0,0]],
-)
+    def print(self):
+        for attr in ['log', 'tokens', 'slots', 'discard_pile']:
+            print(f'{attr}:')
+            pprint(getattr(self, attr))
 
-def my_player(state, log, hands, rules, tokens, slots, discard_pile):
-    
-    return action, new_state
-'''
+if __name__ == '__main__':
+    from players.base import random_player
+    from pprint import pprint
+    score = []
+    for i in range(100):
+        h = Hanabi([random_player, random_player, random_player])
+        score.append(h.run())
 
-from pprint import pprint
-def make_io_player(name):
-    def io_player(state, log, hands, rules, tokens, slots, discard_pile):
-        print(f"{name}'s turn")
-        pprint(log[-len(hands):])
-        pprint(hands)
-        pprint(tokens)
-        pprint(slots)
-        pprint(discard_pile)
-        pprint('What will it be?')
-        pprint('[c]lue <player><type><n>\t\t[p]lay <card>\t\t[d]iscard <card>')
-        move = input().split()
-        try:
-            if move[0] == 'c':
-                _, ptn = move
-                p, t, n = ptn
-                t = {'s': 'suit', 'n': 'rank'}[t]
-                return state, Clue.create(int(p), t, int(n))
-            elif move[0] == 'p':
-                _, card_id = move
-                return state, Play.create(int(card_id))
-            elif move[0] == 'd':
-                _, card_id = move
-                return state, Discard.create(int(card_id))
-        except:
-            print('illegal move')
-            return io_player(state, log, hands, rules, tokens, slots, discard_pile)
-    return io_player
-
-
-def random_player(state, log, hands, rules, tokens, slots, discard_pile):
-    my_id = len(log) % len(hands)
-
-    possible_actions = [Play]
-    if tokens.clues > 0:
-        possible_actions.append(Clue)
-
-    if tokens.clues < rules.max_tokens.clues:
-        possible_actions.append(Discard)
-
-    action = random.choice(possible_actions)
-
-    if isinstance(action, Play):
-        return state, Play(random.choice(hands[my_id]).id)
-    if isinstance(action, Discard):
-        return state, Discard(random.choice(hands[my_id]).id)
-    if isinstance(action, Clue):
-        player = random.choice([i for i in range(len(hands)) if i != my_id])
-        type = random.choice(['suit', 'rank'])
-        return state, Clue(player, type, getattr(random.choice(hands[player]).known, type))
-
-
-#h = Hanabi([random_player, random_player, random_player])
-#print(h.run())
-#print(h.log)
-Hanabi([make_io_player('Aur'), make_io_player('Ofer')]).run()
+    from collections import Counter
+    print(Counter(score))
+    import pandas as pd
+    d = pd.Series(score)
+    print(d.describe())
