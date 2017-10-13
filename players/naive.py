@@ -1,6 +1,11 @@
 from hanabi import Clue, Play, Discard, ResolvedClue
+from hanabi import Card, Tokens, Rules
+from typing import NamedTuple, List, Tuple
 
-def naive_player(state, log, hands, rules, tokens, slots, discard_pile):
+
+def naive_player(state: None, log: List[NamedTuple], hands: List[List[Card]], 
+                 rules: Rules, tokens: Tokens, slots: List[int], 
+                 discard_pile: List[List[int]]) -> Tuple[None, NamedTuple]:
     """
     Zvika and Ofer's naive player
     """

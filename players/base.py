@@ -1,16 +1,20 @@
 import random
 from pprint import pprint
 from hanabi import Clue, Play, Discard
+from hanabi import Card, Tokens, Rules
+from typing import NamedTuple, List, Tuple, Callable
 
 
-def make_io_player(name):
+def make_io_player(name: str) -> Callable:
     """
     Aur's basic IO player generator
 
     usage:
         h = Hanabi([make_io_player('Aur'), make_io_player('Ofer')])
     """
-    def io_player(state, log, hands, rules, tokens, slots, discard_pile):
+    def io_player(state: None, log: List[NamedTuple], hands: List[List[Card]], 
+                  rules: Rules, tokens: Tokens, slots: List[int], 
+                  discard_pile: List[List[int]]) -> Tuple[None, NamedTuple]:
         print(f"{name}'s turn")
         pprint(log[-len(hands):])
         pprint(hands)
@@ -41,7 +45,9 @@ def make_io_player(name):
     return io_player
 
 
-def random_player(state, log, hands, rules, tokens, slots, discard_pile):
+def random_player(state: None, log: List[NamedTuple], hands: List[List[Card]], 
+                  rules: Rules, tokens: Tokens, slots: List[int], 
+                  discard_pile: List[List[int]]) -> Tuple[None, NamedTuple]:
     """
     Zvika and Ofer's random player
 

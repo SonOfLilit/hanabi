@@ -2,6 +2,7 @@ import random
 from pprint import pprint
 from collections import namedtuple
 from enum import Enum
+from typing import List, NamedTuple, Tuple
 
 import colorama
 colorama.init()
@@ -36,7 +37,7 @@ class Rules(namedtuple('Rules', 'max_tokens suits ranks cards_per_player')):
 
 
 IDENTIFIER_TO_MOVE = {}
-def move_tuple(name, identifier, items):
+def move_tuple(name: str, identifier: str, items: (str, List[str])) -> NamedTuple:
     class Move(namedtuple(name, items)):
         @classmethod
         def create(cls, *args, **kwargs):
@@ -86,7 +87,7 @@ class Hanabi:
         self.slots = [0] * self.rules.suits
         self.discard_pile = [[0] * len(self.rules.ranks) for _ in range(self.rules.suits)]
 
-    def run(self):
+    def run(self) -> int:
         if self.log:
             raise RuntimeError("run already done")
         self.deal_cards()
@@ -104,7 +105,7 @@ class Hanabi:
                     return self.score
 
     @classmethod
-    def new_shuffled_deck(cls, suits, ranks):
+    def new_shuffled_deck(cls, suits: int, ranks: List[int]) -> List[Card]:
         cards = []
         for suit in range(suits):
             for rank, count in enumerate(ranks):
@@ -112,7 +113,7 @@ class Hanabi:
         random.shuffle(cards)
         return list(reversed([Card(card_id, card) for card_id, card in enumerate(cards)]))
 
-    def deal_cards(self):
+    def deal_cards(self) -> None:
         for player in self.iterate_players():
             for _i in range(self.rules.cards_per_player):
                 card = self.take_hidden_card_from_deck()
@@ -125,7 +126,7 @@ class Hanabi:
             self.current_player = i
             yield i
 
-    def take_hidden_card_from_deck(self):
+    def take_hidden_card_from_deck(self) -> Card:
         if not self.deck:
             if self.end_mode == EndMode.fair and self.final_player is None:
                 self.final_player = (self.current_player - 1) % len(self.hands)
@@ -136,13 +137,13 @@ class Hanabi:
         self.hands[self.current_player].append(card)
         return card.hidden()
 
-    def is_game_over(self):
+    def is_game_over(self) -> bool:
         if self.end_mode == EndMode.endless and not [i for i in self.hands[(self.current_player + 1) % len(self.hands)] if i]:
             return True
         return (self.lives == 0 or self.final_player == self.current_player or
                 all(slot == len(self.rules.ranks) for slot in self.slots))
 
-    def resolve(self, move):
+    def resolve(self, move: NamedTuple) -> None:
         if isinstance(move, Clue):
             if not self.clues > 0:
                 raise IllegalMove("no clues to give")
@@ -180,7 +181,7 @@ class Hanabi:
     def clues(self):
         return self.tokens.clues
     @clues.setter
-    def clues(self, value):
+    def clues(self, value: int):
         self.tokens = self.tokens._replace(clues=value)
 
     @property
@@ -191,10 +192,10 @@ class Hanabi:
     def lives(self):
         return self.tokens.lives
     @lives.setter
-    def lives(self, value):
+    def lives(self, value: int):
         self.tokens = self.tokens._replace(lives=value)
 
-    def take_card_from_current_hand(self, card_id):
+    def take_card_from_current_hand(self, card_id: int) -> Card:
         for i, card in enumerate(self.hands[self.current_player]):
             if card.id == card_id:
                 del self.hands[self.current_player][i]
