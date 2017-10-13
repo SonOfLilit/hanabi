@@ -184,8 +184,7 @@ if __name__ == '__main__':
         h = Hanabi([random_player, random_player, random_player])
         score.append(h.run())
 
-    from collections import Counter
-    print(Counter(score))
     import pandas as pd
     d = pd.Series(score)
     print(d.describe())
+    print(d.value_counts())
