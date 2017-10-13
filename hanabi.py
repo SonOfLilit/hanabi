@@ -240,7 +240,7 @@ def main():
     parser.add_argument('-t', '--times', default=1, type=int)
     parser.add_argument('-n', '--players', default=3, type=int)
     parser.add_argument('-c', '--allow-cheats', default=False, action='store_true')
-    parser.add_argument('-e', '--end-mode', default='official', choices=['official', 'endless', 'fair'])
+    parser.add_argument('-e', '--end-mode', default='official', choices=[e.name for e in EndMode])
     parser.add_argument('-s', '--suits', default=5, type=int)
 
     args = parser.parse_args()
