@@ -1,5 +1,5 @@
-from hanabi import Play, Discard, Clue
-from hanabi import Card, Tokens, Rules
+from game import Play, Discard, Clue
+from game import Card, Tokens, Rules
 from typing import NamedTuple, List, Tuple
 
 

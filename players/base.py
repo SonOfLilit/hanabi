@@ -1,8 +1,8 @@
 import random
 from pprint import pprint
-from hanabi import Clue, Play, Discard
+from game import Clue, Play, Discard
 
-from hanabi import Card, Tokens, Rules
+from game import Card, Tokens, Rules
 from typing import NamedTuple, List, Tuple, Callable
 
 
