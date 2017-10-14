@@ -22,7 +22,7 @@ def run_game_once(player, num_players=3, end_mode=EndMode.official, suits=5, all
     return h
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('player_name')
     parser.add_argument('-t', '--times', default=1, type=int)
@@ -35,6 +35,9 @@ if __name__ == '__main__':
     player = getattr(players, args.player_name)
     h_args = (args.players, EndMode[args.end_mode], args.suits, args.allow_cheats)
     if args.times > 1:
-        scores = run_game_n_times(player, args.times, *h_args)
-    if args.times == 1:
-        h = run_game_once(player, *h_args)
+        return run_game_n_times(player, args.times, *h_args)
+    else:
+        return run_game_once(player, *h_args)
+
+if __name__ == '__main__':
+    main()

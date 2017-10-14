@@ -4,10 +4,6 @@ from collections import namedtuple
 from enum import Enum
 from typing import List, NamedTuple, Tuple
 
-import colorama
-colorama.init()
-suits_col = [colorama.Fore.RED, colorama.Fore.GREEN, colorama.Fore.YELLOW,
-             colorama.Fore.BLUE, colorama.Fore.MAGENTA, colorama.Fore.CYAN, ]
 
 class EndMode(Enum):
     official = 1
@@ -21,7 +17,7 @@ class IllegalMove(Exception):
 
 class KnownCard(namedtuple('KnownCard', 'suit rank')):
     def __repr__(self):
-        return f':{suits_col[self.suit]}{chr(ord("A")+self.suit)}{self.rank}'
+        return f':{chr(ord("A")+self.suit)}{self.rank}'
 
 class Card(namedtuple('Card', 'id data')):
     def __repr__(self):
