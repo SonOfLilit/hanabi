@@ -10,57 +10,91 @@ class EndMode(Enum):
     endless = 2
     fair = 3
 
-
 class IllegalMove(Exception):
     pass
 
+class Suit(int):
+    def __str__(self):
+        return chr(ord("A") + self)
+
+class Rank(int):
+    def __str__(self):
+        return str(self + 1)
 
 class KnownCard(namedtuple('KnownCard', 'suit rank')):
     def __repr__(self):
-        return f':{chr(ord("A")+self.suit)}{self.rank}'
+        return f':{self.suit}{self.rank}'
 
 class Card(namedtuple('Card', 'id data')):
     def __repr__(self):
         return f'#{self.id:02}{self.data or ""}'
     def hidden(self):
-        if self.data is not None:
-            return self._replace(data=None)
-        return self
+        return self._replace(data=None)
 
 
 class Tokens(namedtuple('Tokens', 'clues lives')):
     pass
 
-
 class Rules(namedtuple('Rules', 'max_tokens suits ranks cards_per_player')):
     pass
 
 
-IDENTIFIER_TO_MOVE = {}
+class Move():
+    @property
+    def move_prefix(self):
+        return f'{self.move} '
+    @property
+    def resolved_prefix(self):
+        return f'{self.cur_player}>{self.move} '
+    @classmethod
+    def create(cls, *args, **kwargs):
+        return cls(cls.identifier, *args, **kwargs)
 
+class Clue(namedtuple('Clue', 'move player type param'), Move):
+    identifier = 'c'
+    def __repr__(self):
+        return self.move_prefix + f'P={self.player} {self.type}={self.param}'
 
-def move_tuple(name: str, identifier: str, items: (str, List[str])) -> NamedTuple:
-    class Move(namedtuple(name, items)):
-        @classmethod
-        def create(cls, *args, **kwargs):
-            ret = cls(cls.identifier, *args, **kwargs)
-            return ret
-    Move.identifier = identifier
-    Move.__name__ = name
-    if 'Resolved' not in name:
-        IDENTIFIER_TO_MOVE[identifier] = Move
-    return Move
-ResolvedClue = move_tuple('ResolvedClue___', 'c', 'move cur_player player type param cards cards_neg')
-ResolvedPlay = move_tuple('ResolvedPlay___', 'p', 'move cur_player card new_card is_success')
-ResolvedDiscard = move_tuple('ResolvedDiscard', 'd', 'move cur_player card new_card')
-ResolvedDraw = move_tuple('ResolvedDraw___', 'n', 'move cur_player cards')
-Clue = move_tuple('Clue', 'c', 'move player type param')
-Play = move_tuple('Play', 'p', 'move card_id')
-Discard = move_tuple('Discard', 'd', 'move card_id')
+class Play(namedtuple('Play', 'move card_id'), Move):
+    identifier = 'p'
+    def __repr__(self):
+        return self.move_prefix + f'{self.card_id}'
 
+class Discard(namedtuple('Discard', 'move card_id'), Move):
+    identifier = 'd'
+    def __repr__(self):
+        return self.move_prefix + f'{self.card_id}'
+
+IDENTIFIER_TO_MOVE = {cls.identifier: cls for cls in [Clue, Play, Discard]}
 
 def tuple_to_move(tup: Tuple) -> NamedTuple:
     return IDENTIFIER_TO_MOVE[tup[0]]._make(tup)
+    
+    
+class ResolvedClue(namedtuple('ResolvedClue', 'move cur_player player type param cards cards_neg'), Clue):
+    def __repr__(self):
+        return self.resolved_prefix + f'player={self.player} {self.type}={self.param} {self.cards} {self.cards_neg}'
+
+class ResolvedPlay(namedtuple('ResolvedPlay', 'move cur_player card new_card is_success'), Play):
+    @property
+    def card_id(self):  # overwrite the parent property
+        return self.card.id
+    def __repr__(self):
+        return self.resolved_prefix + f'{self.card}{"+" if self.is_success else "-"} {self.new_card}'
+
+class ResolvedDiscard(namedtuple('ResolvedDiscard', 'move cur_player card new_card'), Discard):
+    @property
+    def card_id(self):  # overwrite the parent property
+        return self.card.id
+    def __repr__(self):
+        return self.resolved_prefix + f'{self.card}  {self.new_card}'
+    
+class ResolvedDraw(namedtuple('ResolvedDraw___', 'move cur_player cards'), Move):
+    identifier = 'n'
+    def __repr__(self):
+        return self.resolved_prefix + f'{self.cards}'
+
+
 
 DEFAULT_RULES = Rules(max_tokens=Tokens(8, 4), cards_per_player=None, suits=5, ranks=[3, 2, 2, 2, 1])
 
@@ -113,7 +147,7 @@ class Hanabi:
         cards = []
         for suit in range(suits):
             for rank, count in enumerate(ranks):
-                cards += [KnownCard(suit, rank)] * count
+                cards += [KnownCard(Suit(suit), Rank(rank))] * count
         random.shuffle(cards)
         return list(reversed([Card(card_id, card) for card_id, card in enumerate(cards)]))
 
