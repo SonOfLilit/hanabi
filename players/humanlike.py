@@ -44,6 +44,15 @@ def humanlike_player(state, log, hands, rules, tokens, slots, discard_pile):
                         new_negative[move.param] = False
                         cards[card.id] = cards[card.id]._replace(negative=cards[card.id].negative._replace(**{move.type: new_negative}))
 
+        # Consolidate negatives in hand
+        for card_id in hinted_cards:
+            if cards[card_id].negative.suit.count(True) == 1:
+                cards[card.id]._replace(positive=cards[card.id].positive._replace(
+                    suit=[i for i, v in enumerate(cards[card_id].negative.suit) if v]))
+            if cards[card_id].negative.rank.count(True) == 1:
+                cards[card.id]._replace(positive=cards[card.id].positive._replace(
+                    rank=[i for i, v in enumerate(cards[card_id].negative.rank) if v]))
+
         return cards, hinted_cards
 
     def get_max_rank_in_suit(suit, _slots, _discard_pile):
@@ -195,12 +204,42 @@ def humanlike_player(state, log, hands, rules, tokens, slots, discard_pile):
                 return state, Clue.create(given_clue.player, given_clue.type, getattr(given_clue.card.data, given_clue.type))
 
     if tokens.clues < rules.max_tokens.clues:  # Its better to discard then playing like an idiot
-        # TODO: make discard logic
+        protected_cards = set()
+        for card_id in my_card_ids:
+            # Throw away useless cards
+            if state[card_id].positive.suit is not None and not is_playable_suit(state[card_id].positive.suit, slots, discard_pile):
+                return state, Discard.create(card_id)
+
+            if state[card_id].positive.rank is not None and all([slot<state[card_id].positive.rank for slot in slots]):
+                return state, Discard.create(card_id)
+
+            if state[card_id].positive.suit is not None and state[card_id].positive.rank is not None:
+                if slots[state[card_id].positive.suit] < state[card_id].positive.rank:
+                    return state, Discard.create(card_id)
+
+                # Don't throw away lone copies
+                avaiable_copies = rules.ranks[state[card_id].positive.rank]
+                discarded_copies = discard_pile[state[card_id].positive.suit][state[card_id].positive.rank]
+                if avaiable_copies - discarded_copies == 1:
+                    protected_cards.add(card_id)
+
+            # Don't throw away 5s
+            if state[card_id].positive.rank is not None:
+                avaiable_copies = rules.ranks[state[card_id].positive.rank]
+                if avaiable_copies == 1:
+                    protected_cards.add(card_id)
+
+        throwaways = set(my_card_ids) - protected_cards
+        if throwaways:
+            return state, Discard.create(min(throwaways))
+
         return state, Discard.create(min(my_card_ids))
 
     if tokens.clues > 0:
         # give random clue to the player playing before you so the other players may fix it
         player = (my_id -1) % len(hands)
-        return state, Clue.create(player, 'suit', hands[player][0].data.suit)
+        if hands[player]:
+            highest_rank_in_hand = sorted([card.data.rank for card in hands[player]])[-1]
+            return state, Clue.create(player, 'rank', highest_rank_in_hand)
 
     return state, Play.create(max(my_card_ids))  # If all else fails, play like an idiot
