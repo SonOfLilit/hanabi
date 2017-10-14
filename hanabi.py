@@ -1,12 +1,25 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Oct 13 19:57:00 2017
-
-@author: Tsvika
-"""
 import argparse
-from game import EndMode, run_game_n_times, run_game_once
+from game import Hanabi, EndMode, DEFAULT_RULES
 import players
+
+def run_game_n_times(player, t, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
+    score = []
+    for i in range(t):
+        h = Hanabi([player] * num_players, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
+        score.append(h.run())
+
+    import pandas as pd
+    d = pd.Series(score)
+    print(d.describe())
+    print(d.value_counts(sort=False))
+    return d
+
+
+def run_game_once(player, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
+    h = Hanabi([player] * num_players, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
+    h.run()
+    h.print()
+    return h
 
 
 if __name__ == '__main__':

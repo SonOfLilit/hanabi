@@ -14,8 +14,10 @@ class EndMode(Enum):
     endless = 2
     fair = 3
 
+
 class IllegalMove(Exception):
     pass
+
 
 class KnownCard(namedtuple('KnownCard', 'suit rank')):
     def __repr__(self):
@@ -29,14 +31,18 @@ class Card(namedtuple('Card', 'id data')):
             return self._replace(data=None)
         return self
 
+
 class Tokens(namedtuple('Tokens', 'clues lives')):
     pass
+
 
 class Rules(namedtuple('Rules', 'max_tokens suits ranks cards_per_player')):
     pass
 
 
 IDENTIFIER_TO_MOVE = {}
+
+
 def move_tuple(name: str, identifier: str, items: (str, List[str])) -> NamedTuple:
     class Move(namedtuple(name, items)):
         @classmethod
@@ -56,11 +62,12 @@ Clue = move_tuple('Clue', 'c', 'move player type param')
 Play = move_tuple('Play', 'p', 'move card_id')
 Discard = move_tuple('Discard', 'd', 'move card_id')
 
+
 def tuple_to_move(tup: Tuple) -> NamedTuple:
     return IDENTIFIER_TO_MOVE[tup[0]]._make(tup)
 
-
 DEFAULT_RULES = Rules(max_tokens=Tokens(8, 4), cards_per_player=None, suits=5, ranks=[3, 2, 2, 2, 1])
+
 
 class Hanabi:
     def __init__(self, players, rules=DEFAULT_RULES, deck=None, allow_cheats=False, end_mode=EndMode.official):
@@ -206,25 +213,3 @@ class Hanabi:
         for attr in ['log', 'tokens', 'slots', 'hands', 'discard_pile', 'score']:
             print(f'{attr}:')
             pprint(getattr(self, attr))
-
-
-def run_game_n_times(player, times, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
-    score = []
-    for _t in range(times):
-        h = Hanabi([player] * num_players, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
-        score.append(h.run())
-
-    import pandas as pd
-    scores = pd.Series(score)
-    print(scores.describe())
-    hist = scores.value_counts(sort=False).sort_index()
-    print(hist)
-    hist.plot(style='o', logy=True)
-    return scores
-
-
-def run_game_once(player, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
-    h = Hanabi([player] * num_players, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
-    h.run()
-    h.print()
-    return h
