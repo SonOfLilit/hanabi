@@ -1,6 +1,6 @@
 import random
 from pprint import pprint
-from hanabi import Clue, Play, Discard
+from game import Clue, Play, Discard
 
 
 def make_io_player(name):

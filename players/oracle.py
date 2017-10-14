@@ -1,4 +1,4 @@
-from hanabi import Play, Discard, Clue
+from game import Play, Discard, Clue
 
 
 def oracle_player(state, log, hands, rules, tokens, slots, discard_pile):

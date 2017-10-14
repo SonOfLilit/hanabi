@@ -1,4 +1,5 @@
-from hanabi import Clue, Play, Discard, ResolvedClue
+from game import Clue, Play, Discard, ResolvedClue
+
 
 def naive_player(state, log, hands, rules, tokens, slots, discard_pile):
     """
@@ -11,7 +12,7 @@ def naive_player(state, log, hands, rules, tokens, slots, discard_pile):
     my_card_ids = [card.id for card in hands[my_id]]
 
     for move in log[-len(hands):]:
-        if move.__name__ == 'ResolvedClue':  # FIX_ME
+        if isinstance(move, ResolvedClue):
             if move.player == my_id:
                 for card in move.cards:
                     hinted_cards.add(card.id)
