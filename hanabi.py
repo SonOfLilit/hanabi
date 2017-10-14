@@ -23,7 +23,7 @@ class KnownCard(namedtuple('KnownCard', 'suit rank')):
 
 class Card(namedtuple('Card', 'id data')):
     def __repr__(self):
-        return f'#{self.id}{self.data or ""}'
+        return f'#{self.id:02}{self.data or ""}'
     def hidden(self):
         if self.data is not None:
             return self._replace(data=None)
@@ -48,10 +48,10 @@ def move_tuple(name: str, identifier: str, items: (str, List[str])) -> NamedTupl
     if 'Resolved' not in name:
         IDENTIFIER_TO_MOVE[identifier] = Move
     return Move
-ResolvedClue = move_tuple('ResolvedClue', 'c', 'move cur_player player type param cards')
-ResolvedPlay = move_tuple('ResolvedPlay', 'p', 'move cur_player card new_card is_success')
-ResolvedDiscard = move_tuple('ResolvedDisc', 'd', 'move cur_player card new_card')
-ResolvedDraw = move_tuple('ResolvedDraw', 'n', 'move cur_player card')
+ResolvedClue = move_tuple('ResolvedClue___', 'c', 'move cur_player player type param cards')
+ResolvedPlay = move_tuple('ResolvedPlay___', 'p', 'move cur_player card new_card is_success')
+ResolvedDiscard = move_tuple('ResolvedDiscard', 'd', 'move cur_player card new_card')
+ResolvedDraw = move_tuple('ResolvedDraw___', 'n', 'move cur_player card')
 Clue = move_tuple('Clue', 'c', 'move player type param')
 Play = move_tuple('Play', 'p', 'move card_id')
 Discard = move_tuple('Discard', 'd', 'move card_id')
