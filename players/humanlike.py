@@ -120,7 +120,9 @@ def humanlike_player(state, log, hands, rules, tokens, slots, discard_pile):
         return _slots[suit] == rank
 
     def create_clue(my_id, _player, type, param):
-        return ResolvedClue.create(my_id, _player, type, param, [card for card in hands[_player] if getattr(card.data, type) == param])
+        cards = [card for card in hands[_player] if getattr(card.data, type) == param]
+        cards_neg = [card for card in hands[_player] if getattr(card.data, type) != param]
+        return ResolvedClue.create(my_id, _player, type, param, cards, cards_neg)
 
     if state is None:
         state = {}
