@@ -5,7 +5,6 @@ def naive_player(state, log, hands, rules, tokens, slots, discard_pile):
     """
     Zvika and Ofer's naive player
     """
-    ignore_clues_after_play = True
     my_id = len(log) % len(hands)
     hinted_cards = set()
 
