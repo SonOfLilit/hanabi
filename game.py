@@ -16,10 +16,12 @@ class IllegalMove(Exception):
 class Suit(int):
     def __str__(self):
         return chr(ord("A") + self)
+    __repr__ = __str__
 
 class Rank(int):
     def __str__(self):
-        return str(self + 1)
+        return chr(ord("1") + self)
+    __repr__ = __str__
 
 class KnownCard(namedtuple('KnownCard', 'suit rank')):
     def __repr__(self):
@@ -115,6 +117,8 @@ class Hanabi:
 
         if deck is None:
             self.deck = self.new_shuffled_deck(self.rules.suits, self.rules.ranks)
+        self.deck_start = self.deck.copy()
+
         self.hands = tuple([[] for _ in players])
         self.hands_start = None
         self.tokens = self.rules.max_tokens
@@ -142,8 +146,8 @@ class Hanabi:
                 if self.is_game_over():
                     return self.score
 
-    @classmethod
-    def new_shuffled_deck(cls, suits: int, ranks: List[int]) -> List[Card]:
+    @staticmethod
+    def new_shuffled_deck(suits: int, ranks: List[int]) -> List[Card]:
         cards = []
         for suit in range(suits):
             for rank, count in enumerate(ranks):
@@ -241,13 +245,128 @@ class Hanabi:
         self.tokens = self.tokens._replace(lives=value)
 
     def take_card_from_current_hand(self, card_id: int) -> Card:
-        for i, card in enumerate(self.hands[self.current_player]):
+        return self.take_card_from_hand(self.hands[self.current_player], card_id)
+    
+    @staticmethod
+    def take_card_from_hand(hand: List[int], card_id: int) -> Card:
+        for i, card in enumerate(hand):
             if card.id == card_id:
-                del self.hands[self.current_player][i]
+                del hand[i]
                 return card
         raise IllegalMove(f'no such card in hand: {card_id}')
+    
+    def id_to_orig_card(self, card_id):
+        return self.deck_start[-1 - card_id]
+    
+    
+    def log_with_spoilers(self):
+        log = []
+        for move in self.log:
+            if isinstance(move, (Play, Discard)):
+                log.append(move._replace(new_card=move.new_card and self.id_to_orig_card(move.new_card.id)))
+            elif isinstance(move, Clue):
+                log.append(move._replace(cards=[self.id_to_orig_card(card.id) for card in move.cards],
+                                         cards_neg=[self.id_to_orig_card(card.id) for card in move.cards_neg]))
+            elif isinstance(move, ResolvedDraw):
+                log.append(move._replace(cards=[self.id_to_orig_card(card.id) for card in move.cards]))
+        return log
 
-    def print(self):
-        for attr in 'rules hands_start log tokens slots hands discard_pile score'.split():
+    def hands_history(self):
+        hands_history = []
+        hands = [[] for _i in range(len(self.hands))]
+        for move in self.log:
+            if isinstance(move, (ResolvedPlay, ResolvedDiscard)):
+                self.take_card_from_hand(hands[move.cur_player], move.card.id)
+                if move.new_card:
+                    hands[move.cur_player] += [self.id_to_orig_card(move.new_card.id)]
+            elif isinstance(move, ResolvedClue):
+                pass
+            elif isinstance(move, ResolvedDraw):
+                hands[move.cur_player] += [self.id_to_orig_card(card.id) for card in move.cards]
+            else:
+                assert False
+            hands_history.append(hands[move.cur_player].copy())
+        return hands_history
+
+    def slots_history(self):
+        slots_history = []
+        slots = [0] * self.rules.suits
+        for move in self.log:
+            if isinstance(move, ResolvedPlay):
+                if move.is_success:
+                    slots[move.card.data.suit] += 1
+            elif isinstance(move, (ResolvedDraw, ResolvedDiscard, ResolvedClue)):
+                pass
+            else:
+                assert False
+            slots_history.append(slots.copy())
+        return slots_history
+    
+    def tokens_history(self):
+        clues_history = []
+        lives_history = []
+        clues, lives = self.rules.max_tokens
+        for move in self.log:
+            if isinstance(move, ResolvedPlay):
+                if move.is_success:
+                    if move.card.data.rank == len(self.rules.ranks)-1 and clues < self.rules.max_tokens.clues:
+                        clues += 1
+                else:
+                    lives -= 1
+            elif isinstance(move, ResolvedDiscard):
+                assert clues < self.rules.max_tokens.clues
+                clues += 1
+            elif isinstance(move, ResolvedClue):
+                clues -= 1
+            elif isinstance(move, ResolvedDraw):
+                pass
+            else:
+                assert False
+            clues_history.append(clues)
+            lives_history.append(lives)
+        return zip(clues_history, lives_history)
+
+    def max_rank_history(self):
+        discard = [[0 for _r in self.rules.ranks] for _s in range(self.rules.suits)]
+        max_rank = [len(self.rules.ranks)] * self.rules.suits
+        max_rank_history = []
+        for move in self.log:
+            if isinstance(move, (ResolvedPlay, ResolvedDiscard)):
+                if isinstance(move, ResolvedPlay) and move.is_success:
+                    pass
+                else:
+                    discard[move.card.data.suit][move.card.data.rank] += 1
+                    if discard[move.card.data.suit][move.card.data.rank] == self.rules.ranks[move.card.data.rank]:
+                        max_rank[move.card.data.suit] = min(max_rank[move.card.data.suit], int(move.card.data.rank))
+            elif isinstance(move, (ResolvedDraw, ResolvedClue)):
+                pass
+            else:
+                assert False
+            max_rank_history.append(max_rank.copy())
+        return max_rank_history
+        
+
+    def print_history(self, last='.'):
+        last_args = [None] * 7
+        suits = [Suit(s) for s in range(self.rules.suits)]
+        ranks = self.rules.ranks
+        f_str = '{:<50}{:<42}{:<17}{:<17}{:>2}{:>2}{:>4}'
+        print(f_str.format('', str(self.end_mode), str(suits), str(ranks), '', '',''))
+        print(f_str.format('Move', 'Hand', 'Slots', 'max_rank', 'c', 'l', 's'))
+        for move, hand, slots, max_rank, (clues, lives) in zip(
+                self.log, self.hands_history(), self.slots_history(), self.max_rank_history(), self.tokens_history()):
+            this_args = move, hand, slots, max_rank, clues, lives, sum(slots)
+            print(f_str.format(*[last if last and pr==cu else str(cu) for (pr, cu) in zip(last_args, this_args)]))
+            last_args = this_args
+
+
+    def describe(self):
+        # deck_start
+        d0 = 5
+        deck_strs = list(map(str, self.deck_start[::-1]))[sum(map(len, self.hands_start)):]
+        print("deck_start:")
+        print('[' + '\n '.join([', '.join(deck_strs[i:i+d0]) for i in range(0, len(deck_strs), d0)]) + ']')
+        # rest
+        for attr in 'hands_start rules end_mode  log  hands slots tokens discard_pile score'.split():
             print(f'{attr}:')
             pprint(getattr(self, attr))
