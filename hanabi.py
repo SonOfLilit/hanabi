@@ -11,14 +11,14 @@ def run_game_n_times(player, t, num_players=3, end_mode=EndMode.official, suits=
     import pandas as pd
     d = pd.Series(score)
     print(d.describe())
-    print(d.value_counts(sort=False))
+    print(d.value_counts().sort_index())
     return d
 
 
 def run_game_once(player, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
     h = Hanabi([player] * num_players, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
     h.run()
-    h.print()
+    h.print_history()
     return h
 
 
@@ -40,4 +40,4 @@ def main():
         return run_game_once(player, *h_args)
 
 if __name__ == '__main__':
-    main()
+    ret = main()

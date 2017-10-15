@@ -128,8 +128,10 @@ def humanlike_player(state, log, hands, rules, tokens, slots, discard_pile):
     def is_play_legal(suit, rank, _slots):
         return _slots[suit] == rank
 
-    def create_clue(_player, type, param):
-        return ResolvedClue.create(_player, type, param, [card for card in hands[_player] if getattr(card.data, type) == param])
+    def create_clue(my_id, _player, type, param):
+        cards = [card for card in hands[_player] if getattr(card.data, type) == param]
+        cards_neg = [card for card in hands[_player] if getattr(card.data, type) != param]
+        return ResolvedClue.create(my_id, _player, type, param, cards, cards_neg)
 
     if state is None:
         state = {}
@@ -164,13 +166,13 @@ def humanlike_player(state, log, hands, rules, tokens, slots, discard_pile):
                     continue
                 else:  # try and rectify stupidity
                     for card in hands[player]:
-                        suit_clue = create_clue(player, 'suit', card.data.suit)
+                        suit_clue = create_clue(my_id, player, 'suit', card.data.suit)
                         _, is_legal, play = what_will_player_play(
                             dict(foreseen_state), hands[player], player, suit_clue, foreseen_slots, discard_pile)
                         if is_legal or play is None:
                             return state, Clue.create(player, 'suit', card.data.suit)
 
-                        rank_clue = create_clue(player, 'rank', card.data.rank)
+                        rank_clue = create_clue(my_id, player, 'rank', card.data.rank)
                         _, is_legal, play = what_will_player_play(
                             dict(foreseen_state), hands[player], player, rank_clue, foreseen_slots, discard_pile)
                         if is_legal or play is None:
@@ -179,13 +181,13 @@ def humanlike_player(state, log, hands, rules, tokens, slots, discard_pile):
             good_clues = set()
             for card in hands[player]:
                 if slots[card.data.suit] == card.data.rank:
-                    suit_clue = create_clue(player, 'suit', card.data.suit)
+                    suit_clue = create_clue(my_id, player, 'suit', card.data.suit)
                     _, is_legal, play = what_will_player_play(
                         dict(foreseen_state), hands[player], player, suit_clue, foreseen_slots, discard_pile)
                     if is_legal and play == card.id:
                         good_clues.add(PossibleClue(player=player, card=card, type='suit'))
 
-                    rank_clue = create_clue(player, 'rank', card.data.rank)
+                    rank_clue = create_clue(my_id, player, 'rank', card.data.rank)
                     _, is_legal, play = what_will_player_play(
                         dict(foreseen_state), hands[player], player, rank_clue, foreseen_slots, discard_pile)
                     if is_legal and play == card.id:

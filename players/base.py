@@ -2,12 +2,20 @@ import random
 from pprint import pprint
 from game import Clue, Play, Discard
 
+from game import Card, Tokens, Rules
+from typing import NamedTuple, List, Tuple, Callable
 
-def make_io_player(name):
+
+def make_io_player(name: str) -> Callable:
     """
     Aur's basic IO player generator
+
+    usage:
+        h = Hanabi([make_io_player('Aur'), make_io_player('Ofer')])
     """
-    def io_player(state, log, hands, rules, tokens, slots, discard_pile):
+    def io_player(state: None, log: List[NamedTuple], hands: List[List[Card]],
+                  rules: Rules, tokens: Tokens, slots: List[int],
+                  discard_pile: List[List[int]]) -> Tuple[None, NamedTuple]:
         print(f"{name}'s turn")
         pprint(log[-len(hands):])
         pprint(hands)
@@ -19,25 +27,33 @@ def make_io_player(name):
         move = input().split()
         try:
             if move[0] == 'c':
-                _, ptn = move
-                p, t, n = ptn
-                t = {'s': 'suit', 'n': 'rank'}[t]
-                return state, Clue.create(int(p), t, int(n))
+                _, (player, clue_type, param) = move
+                return state, Clue.create(
+                    int(player),
+                    {'s': 'suit', 'n': 'rank'}[clue_type],
+                    int(param))
             elif move[0] == 'p':
                 _, card_id = move
                 return state, Play.create(int(card_id))
             elif move[0] == 'd':
                 _, card_id = move
                 return state, Discard.create(int(card_id))
-        except:
+            else:
+                raise ValueError("not a valid move type")
+        except (ValueError, KeyError):
             print('illegal move')
             return io_player(state, log, hands, rules, tokens, slots, discard_pile)
     return io_player
 
 
-def random_player(state, log, hands, rules, tokens, slots, discard_pile):
+def random_player(state: None, log: List[NamedTuple], hands: List[List[Card]],
+                  rules: Rules, tokens: Tokens, slots: List[int],
+                  discard_pile: List[List[int]]) -> Tuple[None, NamedTuple]:
     """
     Zvika and Ofer's random player
+
+    Usage:
+        h = Hanabi([random_player] * 3)
     """
     my_id = len(log) % len(hands)
 
@@ -56,15 +72,7 @@ def random_player(state, log, hands, rules, tokens, slots, discard_pile):
         return state, Discard.create(random.choice(hands[my_id]).id)
     if action == Clue:
         player = random.choice([i for i in range(len(hands)) if i != my_id])
-        type = random.choice(['suit', 'rank'])
-        return state, Clue.create(player, type, getattr(random.choice(hands[player]).data, type))
-
-"""
-h = Hanabi([random_player, random_player, random_player])
-print(h.run())
-print(h.log)
-
-
-
-Hanabi([make_io_player('Aur'), make_io_player('Ofer')]).run()
-"""
+        clue_type = random.choice(['suit', 'rank'])
+        return state, Clue.create(
+            player, clue_type,
+            getattr(random.choice(hands[player]).data, clue_type))
