@@ -346,11 +346,13 @@ class Hanabi:
         return max_rank_history
         
 
-    def print_history(self, last='.'):
+    def print_history(self, last='.', thin=False):
         last_args = [None] * 7
         suits = [Suit(s) for s in range(self.rules.suits)]
         ranks = self.rules.ranks
         f_str = '{:<50}{:<42}{:<17}{:<17}{:>2}{:>2}{:>4}'
+        if thin:
+            f_str = '{:<50}'
         print(f_str.format('', str(self.end_mode), str(suits), str(ranks), '', '',''))
         print(f_str.format('Move', 'Hand', 'Slots', 'max_rank', 'c', 'l', 's'))
         for move, hand, slots, max_rank, (clues, lives) in zip(
@@ -358,6 +360,8 @@ class Hanabi:
             this_args = move, hand, slots, max_rank, clues, lives, sum(slots)
             print(f_str.format(*[last if last and pr==cu else str(cu) for (pr, cu) in zip(last_args, this_args)]))
             last_args = this_args
+        if thin:
+            self.describe()
 
 
     def describe(self):

@@ -15,10 +15,10 @@ def run_game_n_times(player, t, num_players=3, end_mode=EndMode.official, suits=
     return d
 
 
-def run_game_once(player, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
+def run_game_once(player, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False, thin=False):
     h = Hanabi([player] * num_players, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
     h.run()
-    h.print_history()
+    h.print_history(thin=thin)
     return h
 
 
