@@ -1,9 +1,10 @@
+#!/usr/bin/env python3.6
 import argparse
 from game import Hanabi, EndMode, DEFAULT_RULES
 import players
 
 
-def run_game_n_times(players_list, t, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
+def run_game_n_times(players_list, t, end_mode=EndMode.official, suits=5, allow_cheats=False):
     score = []
     for i in range(t):
         h = Hanabi(players_list, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
