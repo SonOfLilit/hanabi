@@ -2,10 +2,11 @@ import argparse
 from game import Hanabi, EndMode, DEFAULT_RULES
 import players
 
-def run_game_n_times(player, t, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
+
+def run_game_n_times(players_list, t, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
     score = []
     for i in range(t):
-        h = Hanabi([player] * num_players, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
+        h = Hanabi(players_list, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
         score.append(h.run())
 
     import pandas as pd
@@ -15,8 +16,8 @@ def run_game_n_times(player, t, num_players=3, end_mode=EndMode.official, suits=
     return d
 
 
-def run_game_once(player, num_players=3, end_mode=EndMode.official, suits=5, allow_cheats=False):
-    h = Hanabi([player] * num_players, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
+def run_game_once(players_list, end_mode=EndMode.official, suits=5, allow_cheats=False):
+    h = Hanabi(players_list, rules=DEFAULT_RULES._replace(suits=suits), allow_cheats=allow_cheats, end_mode=end_mode)
     h.run()
     h.print_history()
     return h
@@ -30,14 +31,19 @@ def main():
     parser.add_argument('-c', '--allow-cheats', default=False, action='store_true')
     parser.add_argument('-e', '--end-mode', default='official', choices=[e.name for e in EndMode])
     parser.add_argument('-s', '--suits', default=5, type=int)
+    parser.add_argument('-i', '--one-io-player', default=False, action='store_true')
 
     args = parser.parse_args()
-    player = getattr(players, args.player_name)
-    h_args = (args.players, EndMode[args.end_mode], args.suits, args.allow_cheats)
+    players_list = [getattr(players, args.player_name)] * args.players
+    if args.one_io_player:
+        players_list.pop()
+        players_list.append(players.make_io_player('Human Player'))
+
+    h_args = (EndMode[args.end_mode], args.suits, args.allow_cheats)
     if args.times > 1:
-        return run_game_n_times(player, args.times, *h_args)
+        return run_game_n_times(players_list, args.times, *h_args)
     else:
-        return run_game_once(player, *h_args)
+        return run_game_once(players_list, *h_args)
 
 if __name__ == '__main__':
     ret = main()

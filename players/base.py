@@ -22,8 +22,8 @@ def make_io_player(name: str) -> Callable:
         pprint(tokens)
         pprint(slots)
         pprint(discard_pile)
-        pprint('What will it be?')
-        pprint('[c]lue <player><type><n>\t\t[p]lay <card>\t\t[d]iscard <card>')
+        print('What will it be?')
+        print('[c]lue <player><type><n>\t\t[p]lay <card>\t\t[d]iscard <card>')
         move = input().split()
         try:
             if move[0] == 'c':
@@ -57,7 +57,10 @@ def random_player(state: None, log: List[NamedTuple], hands: List[List[Card]],
     """
     my_id = len(log) % len(hands)
 
-    possible_actions = [Play]
+    possible_actions = []
+    if tokens.lives > 1:
+        possible_actions.append(Play)
+
     if tokens.clues > 0:
         possible_actions.append(Clue)
 
