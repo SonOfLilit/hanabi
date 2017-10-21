@@ -15,9 +15,8 @@ def naive_player(state: None, log: List[NamedTuple], hands: List[List[Card]],
 
     hinted_cards = set()
     for move in log[-len(hands):]:
-        if isinstance(move, ResolvedClue):
-            if move.player == my_id:
-                hinted_cards = hinted_cards.union(card.id for card in move.cards)
+        if isinstance(move, ResolvedClue) and move.player == my_id:
+            hinted_cards = hinted_cards.union(card.id for card in move.cards)
 
     # Its better to play than hint
     if hinted_cards:

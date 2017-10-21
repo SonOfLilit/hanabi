@@ -5,6 +5,7 @@ CardInfo = namedtuple('CardInfo', 'positive negative')
 Info = namedtuple('Info', 'suit rank')
 PossibleClue = namedtuple('PossibleClue', 'player card type')
 
+
 def humanlike_player(state, log, hands, rules, tokens, slots, discard_pile):
     """
     Ofer's humanlike player
@@ -133,6 +134,8 @@ def humanlike_player(state, log, hands, rules, tokens, slots, discard_pile):
         cards_neg = [card for card in hands[_player] if getattr(card.data, type) != param]
         return ResolvedClue.create(my_id, _player, type, param, cards, cards_neg)
 
+    # Start
+
     if state is None:
         state = {}
 
@@ -149,8 +152,6 @@ def humanlike_player(state, log, hands, rules, tokens, slots, discard_pile):
     if tokens.clues > 0:  # Its better to hint than discard
         foreseen_slots = list(slots)
         foreseen_state = dict(state)
-
-        non_actionable_clue = None
 
         for i in range(len(hands) - 1):
             player = (my_id + i + 1) % len(hands)

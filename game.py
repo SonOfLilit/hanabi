@@ -10,22 +10,27 @@ class EndMode(Enum):
     endless = 2
     fair = 3
 
+
 class IllegalMove(Exception):
     pass
+
 
 class Suit(int):
     def __str__(self):
         return chr(ord("A") + self)
     __repr__ = __str__
 
+
 class Rank(int):
     def __str__(self):
         return chr(ord("1") + self)
     __repr__ = __str__
 
+
 class KnownCard(namedtuple('KnownCard', 'suit rank')):
     def __repr__(self):
         return f':{self.suit}{self.rank}'
+
 
 class Card(namedtuple('Card', 'id data')):
     def __repr__(self):
@@ -37,6 +42,7 @@ class Card(namedtuple('Card', 'id data')):
 class Tokens(namedtuple('Tokens', 'clues lives')):
     pass
 
+
 class Rules(namedtuple('Rules', 'max_tokens suits ranks cards_per_player')):
     pass
 
@@ -45,29 +51,38 @@ class Move():
     @property
     def move_prefix(self):
         return f'{self.move} '
+
     @property
     def resolved_prefix(self):
         return f'{self.cur_player}>{self.move} '
+
     @classmethod
     def create(cls, *args, **kwargs):
         return cls(cls.identifier, *args, **kwargs)
 
+
 class Clue(namedtuple('Clue', 'move player type param'), Move):
     identifier = 'c'
+
     def __repr__(self):
         return self.move_prefix + f'P={self.player} {self.type}={self.param}'
 
+
 class Play(namedtuple('Play', 'move card_id'), Move):
     identifier = 'p'
+
     def __repr__(self):
         return self.move_prefix + f'{self.card_id}'
 
+
 class Discard(namedtuple('Discard', 'move card_id'), Move):
     identifier = 'd'
+
     def __repr__(self):
         return self.move_prefix + f'{self.card_id}'
 
 IDENTIFIER_TO_MOVE = {cls.identifier: cls for cls in [Clue, Play, Discard]}
+
 
 def tuple_to_move(tup: Tuple) -> NamedTuple:
     return IDENTIFIER_TO_MOVE[tup[0]]._make(tup)
@@ -77,26 +92,30 @@ class ResolvedClue(namedtuple('ResolvedClue', 'move cur_player player type param
     def __repr__(self):
         return self.resolved_prefix + f'player={self.player} {self.type}={self.param} {self.cards} {self.cards_neg}'
 
+
 class ResolvedPlay(namedtuple('ResolvedPlay', 'move cur_player card new_card is_success'), Play):
     @property
     def card_id(self):  # overwrite the parent property
         return self.card.id
+
     def __repr__(self):
         return self.resolved_prefix + f'{self.card}{"+" if self.is_success else "-"} {self.new_card}'
+
 
 class ResolvedDiscard(namedtuple('ResolvedDiscard', 'move cur_player card new_card'), Discard):
     @property
     def card_id(self):  # overwrite the parent property
         return self.card.id
+
     def __repr__(self):
         return self.resolved_prefix + f'{self.card}  {self.new_card}'
-    
+
+
 class ResolvedDraw(namedtuple('ResolvedDraw___', 'move cur_player cards'), Move):
     identifier = 'n'
+
     def __repr__(self):
         return self.resolved_prefix + f'{self.cards}'
-
-
 
 DEFAULT_RULES = Rules(max_tokens=Tokens(8, 4), cards_per_player=None, suits=5, ranks=[3, 2, 2, 2, 1])
 
@@ -229,6 +248,7 @@ class Hanabi:
     @property
     def clues(self):
         return self.tokens.clues
+
     @clues.setter
     def clues(self, value: int):
         self.tokens = self.tokens._replace(clues=value)
@@ -240,6 +260,7 @@ class Hanabi:
     @property
     def lives(self):
         return self.tokens.lives
+
     @lives.setter
     def lives(self, value: int):
         self.tokens = self.tokens._replace(lives=value)
@@ -257,8 +278,7 @@ class Hanabi:
     
     def id_to_orig_card(self, card_id):
         return self.deck_start[-1 - card_id]
-    
-    
+
     def log_with_spoilers(self):
         log = []
         for move in self.log:
@@ -344,7 +364,6 @@ class Hanabi:
                 assert False
             max_rank_history.append(max_rank.copy())
         return max_rank_history
-        
 
     def print_history(self, last='.', thin=False):
         last_args = [None] * 7
@@ -362,7 +381,9 @@ class Hanabi:
             last_args = this_args
         if thin:
             self.describe()
-
+        else:
+            print("\nDiscard pile:")
+            pprint(self.discard_pile)
 
     def describe(self):
         # deck_start
